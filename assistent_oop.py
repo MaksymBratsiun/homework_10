@@ -7,14 +7,13 @@ class Field:
 
 
 class Name(Field):
-    pass
+    def __init__(self, name):
+        Field.value = name
 
 
-class Phone:
-    """при спробі наслідування Phone(Field) в обєктах класу Name(Field) при зміні self.phone змінювалося name.value """
-
+class Phone(Field):
     def __init__(self, value):
-        self.phone = value
+        self.value = value
 
 
 class Record(Field):
@@ -23,44 +22,75 @@ class Record(Field):
         self.phones = []
 
     def add_phone(self, phone):
-        self.phones.append(Phone(phone))
+        list_phones = []
+        for number in self.phones:
+            list_phones.append(number.value)
+        if phone not in list_phones:
+            list_phones.append(phone)
+        self.phones.clear()
+        for number in list_phones:
+            self.phones.append(Phone(number))
 
-    def change_phone(self, old_phone, new_phone):
-        if old_phone == new_phone:
-            return f'{old_phone} is the same number as {new_phone}'
-        else:
-            for phone in self.phones:
-                if phone.phone == old_phone:
-                    self.phones.append(Phone(new_phone))
-                    self.phones.pop(self.phones.index(phone))
+    def get_info(self):
+        phones_info = ''
+        for phone in self.phones:
+            phones_info += f'{phone.value}, '
+        return f'{self.name.value.title()}: {phones_info[:-2]}'
 
     def delete_phone(self, delete_phone):
         old_len = len(self.phones)
         for phone in self.phones:
-            if phone.phone == delete_phone:
+            if phone.value == delete_phone:
                 self.phones.pop(self.phones.index(phone))
-                print(f'delete {delete_phone} complete')
         if len(self.phones) == old_len:
-            print(f'{delete_phone} not found')
+            return False
+        else:
+            return True
+
+    def change_phone(self, old_phone, new_phone):
+        for phone in self.phones:
+            if phone.value == old_phone:
+                self.phones.append(Phone(new_phone))
+                self.phones.pop(self.phones.index(phone))
 
 
 class AddressBook(UserDict):
 
     def add_record(self, record):
         if record.name.value not in self.data:
-            self.data[record.name.value] = record.phones
+            self.data[record.name.value] = record
         else:
-            self.data[record.name.value].extend(record.phones)
-            set_phones = set(self.data[record.name.value])
-            self.data[record.name.value] = list(set_phones)
+            new_record = Record(record.name.value)
+            exists_record = book.get_record(record.name.value)
+            for phone in exists_record.phones:
+                new_record.add_phone(phone.value)
+            for phone in record.phones:
+                new_record.add_phone(phone.value)
+            self.data[record.name.value] = new_record
 
-    def delete_contact(self, name):
+    def get_all_record(self):
+        return self.data
+
+    def get_record(self, name) -> Record:
+        return self.data.get(name)
+
+    def has_record(self, name):
+        return bool(self.data.get(name))
+
+    def find_record(self, value):
+        if self.has_record(value):
+            return self.get_record(value)
+
+        for record in self.get_all_record().values():
+            for phone in record.phones:
+                if phone.value == value:
+                    return record
+
+    def delete_record(self, name):
         del self.data[name]
 
 
-""""""
 book = AddressBook()
-"""Create object AdressBook"""
 
 
 def input_error(func):  # decorator @input_error
@@ -90,25 +120,24 @@ def add_handler(user_input):
 
 @input_error
 def change_handler(user_input):
-    user_name = ''
     if len(user_input) >= 2:
-        for user in book:
-            if user_input[0] in [i.phone for i in book[user]]:
-                user_name = user
-                for phone in book[user]:
-                    if phone.phone == user_input[0]:
-                        book[user].append(Phone(user_input[1]))
-                        book[user].pop(book[user].index(phone))
-                        return f"Contact {user_name.title()}: old number {user_input[0]} " \
-                               f"successfully changed to {user_input[1]}"
-    if not user_name:
-        return f"Old number {user_input[0]} not found "
+        if user_input[0] == user_input[1]:
+            return f"Its the same phone {user_input[1]}"
+        elif book.find_record(user_input[0]):
+                find_record = book.find_record(user_input[0])
+                find_record.change_phone(user_input[0], user_input[1])
+                book.delete_record(find_record.name.value)
+                book.add_record(find_record)
+                return f"Contact {find_record.name.value.title()}: old number {user_input[0]} " \
+                       f"successfully changed to {user_input[1]}"
+        else:
+            return f"Phone {user_input[0]} no found"
 
 
 @input_error
 def delete_handler(user_input):
     if user_input[0]:
-        book.delete_contact(user_input[0])
+        book.delete_record(user_input[0])
         return f"Contact {user_input[0].title()} deleted"
 
 
@@ -132,7 +161,7 @@ def help_hendler(user_input):
     "delete" - delete contact: "delete Ivan"
     "hello" -  print How can I help you?: "hello"
     "help": print help list: "help"
-    "phone" - print phone of name: "phone Ivan"
+    "search" - print phone or name: "search Ivan" or "search +380501234567"
     "show all" - print names and phones: "show all" """
     return text
 
@@ -158,21 +187,18 @@ def input_parser():
 
 
 @input_error
-def phone_handler(user_input):
+def search_handler(user_input):
     if len(user_input):
-        if user_input[0] in book:
-            phone_book_list = []
-            for phone in book[user_input[0]]:
-                phone_book_list.append(f"{user_input[0].title()}: {phone.phone}")
-            return "\n".join(phone_book_list)
-    else:
-        raise KeyError
+        if book.find_record(user_input[0]):
+            return book.find_record(user_input[0]).get_info()
+        else:
+            return f"{user_input[0]} not found"
 
 
 def show_handler(user_input):
     phone_book_list = []
-    for name in book:
-        phone_book_list.append(f"{name.title()}: {[i.phone for i in book[name]]}")
+    for key, rec in book.get_all_record().items():
+        phone_book_list.append(rec.get_info())
     return "\n".join(phone_book_list)
 
 
@@ -184,7 +210,7 @@ HENDLER_DICT = {
     "good bye": exit_handler,
     "hello": hello_handler,
     "help": help_hendler,
-    "phone": phone_handler,
+    "search": search_handler,
     "show all": show_handler,
     "delete": delete_handler
 }
