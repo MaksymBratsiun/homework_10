@@ -3,21 +3,54 @@ from datetime import datetime, timedelta
 
 
 class Field:
-    def __init__(self, name):
-        self.value = name
+    def __init__(self, value):
+        self._value = None
+        self.value = value
+
+    @property
+    def value(self):
+        return self._value
+
+    @value.setter
+    def value(self, value):
+        self._value = value
 
 
 class Birthday(Field):
-    pass
-
+    @Field.value.setter
+    def value(self, value):
+        if len(value) != 5:
+            raise ValueError("Date of birth is incorrect.")
+        if int(value[0:2]) > 12:
+                raise ValueError("Date of birth is incorrect.")
+        if value[0:2] in ("01", "03", "05", "07", "08", "10", "12"):
+            if int(value[3:5]) > 31:
+                raise ValueError("Date of birth is incorrect.")
+        elif value[0:2] in ("04", "06", "09", "11"):
+            if int(value[3:5]) > 30:
+                raise ValueError("Date of birth is incorrect.")
+        elif value[0:2] == "02":
+            if int(value[3:5]) > 28:
+                raise ValueError("Date of birth is incorrect.")
+        self._value = value
 
 
 class Name(Field):
-    pass
+    @Field.value.setter
+    def value(self, value):
+        if not value.isalpha():
+            raise ValueError
+        self._value = value
 
 
 class Phone(Field):
-    pass
+    @Field.value.setter
+    def value(self, value):
+        if len(value) < 7 or len(value) > 12:
+            raise ValueError("Phone must contains 10 symbols.")
+        if not value.isnumeric():
+            raise ValueError('Wrong phones.')
+        self._value = value
 
 
 class Record(Field):
@@ -115,28 +148,42 @@ class AddressBook(UserDict):
             for phone in record.phones:
                 if phone.value == value:
                     return record
+    # @staticmethod
+    # def iterator(phone_book):
+    #     return Iterable(phone_book)
+
+    def iterator(self, max_len=5):
+        page = []
+        i = 0
+        for record in self.data.values():
+            page.append(record)
+            i += 1
+            if i == max_len:
+                yield page
+                page = []
+                i = 0
+        if page:
+            yield page
 
     def delete_record(self, name):
         del self.data[name]
 
 
-class Iterable:
-
-    def __init__(self, user_dict):
-        self.iter_dict = user_dict.data
-        print(self.iter_dict)
-        self.current_value = 0
-        self.iterable = iter(self.iter_dict)
-        print(self.iterable)
-
-    def __iter__(self):
-        return self
-
-    def __next__(self):
-        if self.current_value < len(self.iter_dict):
-            self.current_value += 1
-            return self.iter_dict[next(self.iterable)]
-        raise StopIteration
+# class Iterable:
+#
+#     def __init__(self, user_dict):
+#         self.iter_dict = user_dict.data
+#         self.current_value = 0
+#         self.iterable = iter(self.iter_dict)
+#
+#     def __iter__(self):
+#         return self
+#
+#     def __next__(self):
+#         if self.current_value < len(self.iter_dict):
+#             self.current_value += 1
+#             return self.iter_dict[next(self.iterable)]
+#         raise StopIteration
 
 
 book = AddressBook()
@@ -155,7 +202,7 @@ def input_error(func):  # decorator @input_error
         except AttributeError:
             result = f"Name not found. Try again."
         except ValueError:
-            result = f"Wrong. Input correct information"
+            result = f"Input correct information"
         except StopIteration:
             result = "--End--"
         finally:
@@ -172,7 +219,7 @@ def add_handler(user_input):
         book.add_record(record)
     return f"{str(user_input[0]).title()}: {user_input[1]} successfully added"
 
-
+@input_error
 def birthday_handler(user_input):
     if len(user_input) >= 2:
         if book.get_record(user_input[0]):
@@ -266,7 +313,15 @@ def input_parser():
 
 @input_error
 def pagination_handle(user_input):
-    pass
+    str_record = ""
+    page_count = 1
+    for page in book.iterator():
+        str_record += f"---- Page № {page_count} ---\n"
+        for record in page:
+            str_record += f"{record.get_info()}\n"
+        page_count += 1
+        str_record += "\n"
+    return str_record
 
 
 @input_error
@@ -309,22 +364,32 @@ def get_handler(operator):
 
 
 def main():
+    rec = Record('ivan')
+    rec.add_phone('380501234567')
+    rec.add_birthday('02 02')
+    book.add_record(rec)
+    rec1 = Record('petro')
+    rec1.add_phone('380501234567')
+    book.add_record(rec1)
+    rec1 = Record('pet')
+    rec1.add_phone('380501234567')
+    book.add_record(rec1)
+    rec1 = Record('red')
+    rec1.add_phone('380501234567')
+    book.add_record(rec1)
+    rec1 = Record('sar')
+    rec1.add_phone('380501234567')
+    book.add_record(rec1)
+    rec1 = Record('ert')
+    rec1.add_phone('380501234567')
+    book.add_record(rec1)
+
     while True:
         user_input = input_parser()
         string = str(get_handler(user_input[0])(user_input[1:]))
         print(string)
         if string == "Good bye!":
             exit()
-    # rec = Record('ivan')
-    # rec.add_phone('123')
-    # print(rec.get_info())
-    # book.add_record(rec)
-    # rec1 = Record('ivan')
-    # rec1.add_phone('456')
-    # print(rec1.get_info())
-    # book.add_record(rec1)
-    # print(book.get_record('ivan').get_info())
-
 
 
 if __name__ == '__main__':
