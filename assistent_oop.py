@@ -8,21 +8,16 @@ class Field:
 
 
 class Birthday(Field):
-    def __init__(self, value):
-        super().__init__(value)
-        self.value = value
+    pass
+
 
 
 class Name(Field):
-    def __init__(self, value):
-        super().__init__(value)
-        self.value = value
+    pass
 
 
 class Phone(Field):
-    def __init__(self, value):
-        super().__init__(value)
-        self.value = value
+    pass
 
 
 class Record(Field):
@@ -30,7 +25,7 @@ class Record(Field):
         super().__init__(name)
         self.name = Name(name)
         self.phones = []
-        self.birthday = ''
+        self.birthday = None
 
     def add_phone(self, phone):
         list_phones = []
@@ -49,13 +44,13 @@ class Record(Field):
         if self.birthday:
             today = datetime.now()
             birthday = datetime(year=datetime.now().year,
-                                month=int(self.birthday[0:2]),
-                                day=int(self.birthday[3:5]))
+                                month=int(self.birthday.value[0:2]),
+                                day=int(self.birthday.value[3:5]))
             if today > birthday:
                 birthday = datetime(year=datetime.now().year + 1,
-                                    month=int(self.birthday[0:2]),
-                                    day=int(self.birthday[3:5]))
-            return f"{(birthday - today + timedelta(days=1)).days} days to {self.name.value}'s birthday"
+                                    month=int(self.birthday.value[0:2]),
+                                    day=int(self.birthday.value[3:5]))
+            return f"{(birthday - today + timedelta(days=1)).days} days to {self.name.value.title()}'s birthday"
         else:
             return f"{self.name.value.title()}'s date of birth  not set"
 
@@ -99,9 +94,8 @@ class AddressBook(UserDict):
                 new_record.add_phone(phone.value)
             if record.birthday:
                 new_record.add_birthday(record.birthday.value)
-            elif exists_record.birthday.value:
+            elif exists_record.birthday:
                 new_record.add_birthday(exists_record.birthday.value)
-
             self.data[record.name.value] = new_record
 
     def get_all_record(self):
@@ -126,6 +120,25 @@ class AddressBook(UserDict):
         del self.data[name]
 
 
+class Iterable:
+
+    def __init__(self, user_dict):
+        self.iter_dict = user_dict.data
+        print(self.iter_dict)
+        self.current_value = 0
+        self.iterable = iter(self.iter_dict)
+        print(self.iterable)
+
+    def __iter__(self):
+        return self
+
+    def __next__(self):
+        if self.current_value < len(self.iter_dict):
+            self.current_value += 1
+            return self.iter_dict[next(self.iterable)]
+        raise StopIteration
+
+
 book = AddressBook()
 
 
@@ -139,6 +152,12 @@ def input_error(func):  # decorator @input_error
             result = "Phone number not entered."
         except TypeError:
             result = "Phone number not entered."
+        except AttributeError:
+            result = f"Name not found. Try again."
+        except ValueError:
+            result = f"Wrong. Input correct information"
+        except StopIteration:
+            result = "--End--"
         finally:
             return result
 
@@ -155,7 +174,7 @@ def add_handler(user_input):
 
 
 def birthday_handler(user_input):
-    if len(user_input) >= 3:
+    if len(user_input) >= 2:
         if book.get_record(user_input[0]):
             record = book.get_record(user_input[0])
             date_str = f"{user_input[1]} {user_input[2]}"
@@ -168,8 +187,11 @@ def birthday_handler(user_input):
         return f"Name not found"
 
 
+@input_error
 def left_handler(user_input):
-    pass
+    if len(user_input) >= 1:
+        record = book.get_record(user_input[0])
+        return record.days_to_birthday()
 
 
 @input_error
@@ -210,11 +232,13 @@ def hello_handler(user_input):
 def help_handler(user_input):
     text = """ 
     "add" - add name(one word) and phone(digit): "add Ivan +380931234567"
+    "birthday" - add date of birth by format MM DD: "birthday ivan 02 29"
     "close", "exit", "good bye" - exit from application: "exit"
     "change" - change old phone if exists to new phone: "change +380931234567 +380937654321"
     "delete", "remove" - delete contact: "delete Ivan"
     "hello" -  print How can I help you?: "hello"
-    "help": print help list: "help"
+    "help" - print help list: "help"
+    "left" - print day that left to birthday: "left ivan"
     "search", "phone" - print phone or name: "search Ivan" or "search +380501234567"
     "show all" - print names and phones: "show all" """
     return text
@@ -241,6 +265,11 @@ def input_parser():
 
 
 @input_error
+def pagination_handle(user_input):
+    pass
+
+
+@input_error
 def search_handler(user_input):
     if len(user_input):
         if book.find_record(user_input[0]):
@@ -258,12 +287,15 @@ def show_handler(user_input):
 
 HANDLER_DICT = {
     "add": add_handler,
+    "birthday": birthday_handler,
     "close": exit_handler,
     "change": change_handler,
     "exit": exit_handler,
     "good bye": exit_handler,
     "hello": hello_handler,
     "help": help_handler,
+    "left": left_handler,
+    "list": pagination_handle,
     "phone": search_handler,
     "remove": delete_handler,
     "search": search_handler,
@@ -277,24 +309,22 @@ def get_handler(operator):
 
 
 def main():
-    # while True:
-    #     user_input = input_parser()
-    #     string = str(get_handler(user_input[0])(user_input[1:]))
-    #     print(string)
-    #     if string == "Good bye!":
-    #         exit()
-    rec = Record('ivan')
-    rec.add_phone('123')
-    rec.add_birthday('01 01')
-    book.add_record(rec)
-    rec1 = Record('petro')
-    rec1.add_phone('321')
-    rec1.add_birthday('01 02')
-    book.add_record(rec1)
-    phone_book_list = []
-    for key, rec in book.get_all_record().items():
-        phone_book_list.append(rec.get_info())
-    print("\n".join(phone_book_list))
+    while True:
+        user_input = input_parser()
+        string = str(get_handler(user_input[0])(user_input[1:]))
+        print(string)
+        if string == "Good bye!":
+            exit()
+    # rec = Record('ivan')
+    # rec.add_phone('123')
+    # print(rec.get_info())
+    # book.add_record(rec)
+    # rec1 = Record('ivan')
+    # rec1.add_phone('456')
+    # print(rec1.get_info())
+    # book.add_record(rec1)
+    # print(book.get_record('ivan').get_info())
+
 
 
 if __name__ == '__main__':
