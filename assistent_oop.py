@@ -46,11 +46,16 @@ class Name(Field):
 class Phone(Field):
     @Field.value.setter
     def value(self, value):
-        if len(value) < 7 or len(value) > 12:
-            raise ValueError("Phone must contains 10 symbols.")
-        if not value.isnumeric():
+        sanitaze_value = ''
+        not_num = ("+", "-", "(", ")", "-", "/")
+        for char in value:
+            if char not in not_num:
+                sanitaze_value += char
+        if len(sanitaze_value) < 5 or len(sanitaze_value) > 12:
+            raise ValueError("Phone must contains 5-12 symbols.")
+        if not sanitaze_value.isnumeric():
             raise ValueError('Wrong phones.')
-        self._value = value
+        self._value = sanitaze_value
 
 
 class Record(Field):
@@ -61,14 +66,15 @@ class Record(Field):
         self.birthday = None
 
     def add_phone(self, phone):
-        list_phones = []
+        set_phones = set({phone})
         for number in self.phones:
-            list_phones.append(number.value)
-        if phone not in list_phones:
-            list_phones.append(phone)
+            set_phones.add(number.value)
         self.phones.clear()
+        list_phones = list(set_phones)
         for number in list_phones:
             self.phones.append(Phone(number))
+
+
 
     def add_birthday(self, birthday):
         self.birthday = Birthday(birthday)
@@ -148,11 +154,12 @@ class AddressBook(UserDict):
             for phone in record.phones:
                 if phone.value == value:
                     return record
-    # @staticmethod
-    # def iterator(phone_book):
-    #     return Iterable(phone_book)
 
-    def iterator(self, max_len=5):
+    @staticmethod
+    def iterator(phone_book):
+        return Iterable(phone_book)
+
+    def iterator_old(self, max_len=5):
         page = []
         i = 0
         for record in self.data.values():
@@ -169,24 +176,25 @@ class AddressBook(UserDict):
         del self.data[name]
 
 
-# class Iterable:
-#
-#     def __init__(self, user_dict):
-#         self.iter_dict = user_dict.data
-#         self.current_value = 0
-#         self.iterable = iter(self.iter_dict)
-#
-#     def __iter__(self):
-#         return self
-#
-#     def __next__(self):
-#         if self.current_value < len(self.iter_dict):
-#             self.current_value += 1
-#             return self.iter_dict[next(self.iterable)]
-#         raise StopIteration
+class Iterable:
+
+    def __init__(self, user_dict):
+        self.iter_dict = user_dict.data
+        self.current_value = 0
+        self.iterable = iter(self.iter_dict)
+
+    def __iter__(self):
+        return self
+
+    def __next__(self):
+        if self.current_value < len(self.iter_dict):
+            self.current_value += 1
+            return self.iter_dict[next(self.iterable)]
+        raise StopIteration
 
 
 book = AddressBook()
+iter_book = None
 
 
 def input_error(func):  # decorator @input_error
@@ -218,6 +226,7 @@ def add_handler(user_input):
         record.add_phone(user_input[1])
         book.add_record(record)
     return f"{str(user_input[0]).title()}: {user_input[1]} successfully added"
+
 
 @input_error
 def birthday_handler(user_input):
@@ -285,8 +294,10 @@ def help_handler(user_input):
     "delete", "remove" - delete contact: "delete Ivan"
     "hello" -  print How can I help you?: "hello"
     "help" - print help list: "help"
+    "list" - get 5 records of address book, next input give next 5 records
     "left" - print day that left to birthday: "left ivan"
     "search", "phone" - print phone or name: "search Ivan" or "search +380501234567"
+    "page" - print names and phones with page count
     "show all" - print names and phones: "show all" """
     return text
 
@@ -312,16 +323,39 @@ def input_parser():
 
 
 @input_error
-def pagination_handle(user_input):
+def pagination_old_handle(user_input):
     str_record = ""
     page_count = 1
-    for page in book.iterator():
+    for page in book.iterator_old():
         str_record += f"---- Page № {page_count} ---\n"
         for record in page:
             str_record += f"{record.get_info()}\n"
         page_count += 1
         str_record += "\n"
     return str_record
+
+
+@input_error
+def pagination_handle(user_input):
+    global iter_book
+    iter_list = []
+    if iter_book is None:
+        iter_book = book.iterator(book)
+    try:
+        for i in range(5):
+            iter_list.append(f"{next(iter_book).get_info()}")
+    except Exception:
+        iter_book = None
+    finally:
+        return "\n".join(iter_list)
+
+
+
+
+
+
+
+
 
 
 @input_error
@@ -351,6 +385,7 @@ HANDLER_DICT = {
     "help": help_handler,
     "left": left_handler,
     "list": pagination_handle,
+    "page": pagination_old_handle,
     "phone": search_handler,
     "remove": delete_handler,
     "search": search_handler,
@@ -381,6 +416,12 @@ def main():
     rec1.add_phone('380501234567')
     book.add_record(rec1)
     rec1 = Record('ert')
+    rec1.add_phone('380501234567')
+    book.add_record(rec1)
+    rec1 = Record('stree')
+    rec1.add_phone('380501234567')
+    book.add_record(rec1)
+    rec1 = Record('ewq')
     rec1.add_phone('380501234567')
     book.add_record(rec1)
 
