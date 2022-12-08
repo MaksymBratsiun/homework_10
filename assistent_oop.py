@@ -1,5 +1,6 @@
 from collections import UserDict
 from datetime import datetime, timedelta
+import pickle
 
 
 class Field:
@@ -102,6 +103,15 @@ class Record(Field):
             birthday_str = f"(Birthday at month {self.birthday.value[0:2]}, day {self.birthday.value[3:5]})"
         return f"{self.name.value.title()}{birthday_str}: {phones_info[:-2]}"
 
+    def get_search(self):
+        phones_info = ""
+        birthday_str = ""
+        for phone in self.phones:
+            phones_info += f"{phone.value}, "
+        if self.birthday:
+            birthday_str = f"{self.birthday.value}"
+        return f"{self.name.value.title()} {phones_info[:-2]} {birthday_str}"
+
     def delete_phone(self, delete_phone):
         old_len = len(self.phones)
         for phone in self.phones:
@@ -155,6 +165,10 @@ class AddressBook(UserDict):
                 if phone.value == value:
                     return record
 
+    def load_file(self, data):
+        self.data.update(data)
+
+
     @staticmethod
     def iterator(phone_book):
         return Iterable(phone_book)
@@ -191,7 +205,6 @@ class Iterable:
             self.current_value += 1
             return self.iter_dict[next(self.iterable)]
         raise StopIteration
-
 
 book = AddressBook()
 iter_book = None
@@ -296,8 +309,9 @@ def help_handler(user_input):
     "help" - print help list: "help"
     "list" - get 5 records of address book, next input give next 5 records
     "left" - print day that left to birthday: "left ivan"
-    "search", "phone" - print phone or name: "search Ivan" or "search +380501234567"
+    "phone" - print phone or name: "search Ivan" or "search +380501234567"
     "page" - print names and phones with page count
+    "search" - find and print all contacts if input match: "search 123"
     "show all" - print names and phones: "show all" """
     return text
 
@@ -350,21 +364,35 @@ def pagination_handle(user_input):
         return "\n".join(iter_list)
 
 
+def book_saver(book):
+    with open("saved_book.bin", "wb") as file:
+        pickle.dump(book, file)
 
 
-
-
-
-
+def book_loader():
+    with open("saved_book.bin", "rb") as file:
+        result = pickle.load(file)
+    return result
 
 
 @input_error
-def search_handler(user_input):
+def phone_handler(user_input):
     if len(user_input):
         if book.find_record(user_input[0]):
             return book.find_record(user_input[0]).get_info()
         else:
             return f"{user_input[0]} not found"
+
+
+def search_handler(user_input):
+    find_data = ""
+    if len(user_input):
+        for record in book.get_all_record():
+            if book.get(record).get_search().find(user_input[0]) != -1:
+                find_data += f"{book.get(record).get_info()}\n"
+    if not find_data:
+        find_data = f"{user_input[0]} not found  "
+    return find_data[:-2]
 
 
 def show_handler(user_input):
@@ -386,7 +414,7 @@ HANDLER_DICT = {
     "left": left_handler,
     "list": pagination_handle,
     "page": pagination_old_handle,
-    "phone": search_handler,
+    "phone": phone_handler,
     "remove": delete_handler,
     "search": search_handler,
     "show all": show_handler,
@@ -399,37 +427,42 @@ def get_handler(operator):
 
 
 def main():
-    rec = Record('ivan')
-    rec.add_phone('380501234567')
-    rec.add_birthday('02 02')
-    book.add_record(rec)
-    rec1 = Record('petro')
-    rec1.add_phone('380501234567')
-    book.add_record(rec1)
-    rec1 = Record('pet')
-    rec1.add_phone('380501234567')
-    book.add_record(rec1)
-    rec1 = Record('red')
-    rec1.add_phone('380501234567')
-    book.add_record(rec1)
-    rec1 = Record('sar')
-    rec1.add_phone('380501234567')
-    book.add_record(rec1)
-    rec1 = Record('ert')
-    rec1.add_phone('380501234567')
-    book.add_record(rec1)
-    rec1 = Record('stree')
-    rec1.add_phone('380501234567')
-    book.add_record(rec1)
-    rec1 = Record('ewq')
-    rec1.add_phone('380501234567')
-    book.add_record(rec1)
+    # rec = Record('ivan')
+    # rec.add_phone('380501234567')
+    # rec.add_birthday('02 02')
+    # book.add_record(rec)
+    # rec1 = Record('petro')
+    # rec1.add_phone('380501234567')
+    # book.add_record(rec1)
+    # rec1 = Record('pet')
+    # rec1.add_phone('380501234567')
+    # book.add_record(rec1)
+    # rec1 = Record('red')
+    # rec1.add_phone('380501234567')
+    # book.add_record(rec1)
+    # rec1 = Record('sar')
+    # rec1.add_phone('380501234567')
+    # book.add_record(rec1)
+    # rec1 = Record('ert')
+    # rec1.add_phone('380501234567')
+    # book.add_record(rec1)
+    # rec1 = Record('stree')
+    # rec1.add_phone('380501234567')
+    # book.add_record(rec1)
+    # rec1 = Record('ewq')
+    # rec1.add_phone('380501234567')
+    # book.add_record(rec1)
+    try:
+        book.load_file(book_loader())
+    except Exception:
+        pass
 
     while True:
         user_input = input_parser()
         string = str(get_handler(user_input[0])(user_input[1:]))
         print(string)
         if string == "Good bye!":
+            book_saver(book)
             exit()
 
 
