@@ -75,8 +75,6 @@ class Record(Field):
         for number in list_phones:
             self.phones.append(Phone(number))
 
-
-
     def add_birthday(self, birthday):
         self.birthday = Birthday(birthday)
 
@@ -168,7 +166,6 @@ class AddressBook(UserDict):
     def load_file(self, data):
         self.data.update(data)
 
-
     @staticmethod
     def iterator(phone_book):
         return Iterable(phone_book)
@@ -205,6 +202,7 @@ class Iterable:
             self.current_value += 1
             return self.iter_dict[next(self.iterable)]
         raise StopIteration
+
 
 book = AddressBook()
 iter_book = None
