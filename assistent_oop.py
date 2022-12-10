@@ -59,7 +59,7 @@ class Phone(Field):
         self._value = sanitaze_value
 
 
-class Record(Field):
+class Record:
     def __init__(self, name):
         super().__init__(name)
         self.name = Name(name)
